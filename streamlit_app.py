@@ -1,18 +1,19 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-import random
+import re
 
-st.title("⛳ Golf Club Profit Scanner AI")
+st.set_page_config(page_title="Golf Club Auto Profit AI",layout="wide")
 
-st.write("AIがショップを巡回して利益クラブ候補を探します")
+st.title("⛳ Golf Club Auto Profit AI")
+st.write("AIが利益クラブを自動検出します")
 
-shaft_keywords = ["VENTUS","Tour AD","Speeder"]
+shaft_keywords = ["VENTUS","Ventus","Tour AD","Speeder"]
 
 shops = {
-"Golf Partner":"https://www.golfpartner.co.jp/",
-"GDO":"https://shop.golfdigest.co.jp/",
-"Golf5":"https://www.golf5.co.jp/"
+    "Golf Partner":"https://www.golfpartner.co.jp/",
+    "GDO":"https://shop.golfdigest.co.jp/",
+    "Golf5":"https://www.golf5.co.jp/"
 }
 
 def mercari_price(keyword):
@@ -23,85 +24,98 @@ def mercari_price(keyword):
         r = requests.get(url,timeout=10)
         soup = BeautifulSoup(r.text,"html.parser")
 
-        prices = []
+        prices=[]
 
         for span in soup.find_all("span"):
-
-            t = span.text
+            t=span.text
 
             if "¥" in t:
 
-                try:
+                p=re.sub("[^0-9]","",t)
 
-                    p = int(t.replace("¥","").replace(",",""))
+                if p!="":
 
-                    if 5000 < p < 100000:
+                    price=int(p)
 
-                        prices.append(p)
+                    if 5000<price<150000:
 
-                except:
-                    pass
+                        prices.append(price)
 
-        if len(prices) > 0:
+        if len(prices)>5:
 
-            return int(sum(prices[:10])/min(len(prices),10))
+            return int(sum(prices[:10])/10)
 
     except:
         pass
 
-    return random.randint(20000,40000)
+    return None
 
 
-if st.button("AIクラブスキャン"):
+def scan_shop(shop,url):
 
-    results = []
+    items=[]
 
-    for shop in shops:
+    try:
 
-        try:
+        r=requests.get(url,timeout=10)
+        soup=BeautifulSoup(r.text,"html.parser")
 
-            url = shops[shop]
+        links=soup.find_all("a")
 
-            r = requests.get(url,timeout=10)
+        for link in links:
 
-            soup = BeautifulSoup(r.text,"html.parser")
+            name=link.get_text()
 
-            links = soup.find_all("a")
+            for shaft in shaft_keywords:
 
-            for link in links:
+                if shaft in name:
 
-                text = link.get_text()
+                    buy=15000
 
-                for shaft in shaft_keywords:
+                    sell=mercari_price(name)
 
-                    if shaft in text:
+                    if sell:
 
-                        buy = random.randint(15000,35000)
+                        profit=sell-buy
+                        rate=profit/buy*100
 
-                        sell = mercari_price(text)
+                        if rate>10:
 
-                        profit = sell - buy
+                            items.append({
+                                "shop":shop,
+                                "name":name,
+                                "buy":buy,
+                                "sell":sell,
+                                "profit":profit,
+                                "rate":round(rate,1)
+                            })
 
-                        rate = profit / buy * 100
+    except:
+        pass
 
-                        if rate >= 10:
-
-                            results.append(
-                                f"{shop} | {text} | 利益率 {round(rate,1)}%"
-                            )
-
-        except:
-            pass
+    return items
 
 
-    if results:
+if st.button("AIスキャン開始"):
 
-        st.success("🔥 利益クラブ候補")
+    all_items=[]
 
-        for r in results:
+    for shop,url in shops.items():
 
-            st.write(r)
+        result=scan_shop(shop,url)
+
+        all_items+=result
+
+    if len(all_items)==0:
+
+        st.warning("利益候補なし")
 
     else:
 
-        st.warning("候補クラブなし")
+        all_items=sorted(all_items,key=lambda x:x["rate"],reverse=True)
+
+        for item in all_items[:20]:
+
+            st.success(
+                f"{item['name']} | {item['shop']} | 利益率 {item['rate']}%"
+            )
