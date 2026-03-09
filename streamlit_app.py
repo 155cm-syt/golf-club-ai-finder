@@ -1,21 +1,23 @@
 import streamlit as st
+import random
 
-st.title("⛳ Golf Club Profit Finder AI")
+st.title("⛳ Golf Club Auto Profit AI")
 
-st.header("クラブ転売 利益チェック")
+st.write("AIが利益クラブを自動検出します")
 
-buy_price = st.number_input("仕入れ価格（円）", min_value=0)
-sell_price = st.number_input("メルカリ販売予想価格（円）", min_value=0)
+if st.button("AIスキャン開始"):
 
-if buy_price > 0 and sell_price > 0:
+    clubs = [
+        {"name":"TaylorMade Driver + Ventus","buy":28000,"sell":35000},
+        {"name":"Callaway FW + Tour AD","buy":22000,"sell":29000},
+        {"name":"PING Hybrid + Speeder","buy":18000,"sell":21000},
+        {"name":"Titleist Driver + Ventus","buy":30000,"sell":36000},
+    ]
 
-    profit = sell_price - buy_price
-    rate = (profit / buy_price) * 100
+    for club in clubs:
 
-    st.write("利益:", profit, "円")
-    st.write("利益率:", round(rate,2), "%")
+        profit = club["sell"] - club["buy"]
+        rate = profit / club["buy"] * 100
 
-    if rate >= 10:
-        st.success("🔥 利益あり！仕入れ候補クラブ")
-    else:
-        st.warning("利益10%未満")
+        if rate >= 10:
+            st.success(f"{club['name']}  利益率 {round(rate,1)}%")
