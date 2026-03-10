@@ -3,15 +3,11 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
-st.title("⛳ Golf Club Profit Finder")
+st.title("⛳ ゴルフクラブ転売 利益計算AI")
 
-shaft_keywords = [
-"VENTUS","Ventus",
-"Tour AD",
-"Speeder",
-"Diamana",
-"TENSEI"
-]
+club_name = st.text_input("クラブ名を入力（例: SIM2 Ventus）")
+
+buy_price = st.number_input("仕入れ価格",0,100000,20000)
 
 def mercari_price(keyword):
 
@@ -35,15 +31,17 @@ def mercari_price(keyword):
 
                 if num:
 
-                    p=int(num)
+                    price=int(num)
 
-                    if 5000<p<150000:
+                    if 5000<price<150000:
 
-                        prices.append(p)
+                        prices.append(price)
 
-        if len(prices)>3:
+        if len(prices)>5:
 
-            return int(sum(prices[:5])/5)
+            avg=sum(prices[:10])/10
+
+            return int(avg)
 
     except:
         pass
@@ -51,49 +49,28 @@ def mercari_price(keyword):
     return None
 
 
-def check_club(name,price):
+if st.button("利益計算"):
 
-    sell=mercari_price(name)
+    if club_name=="":
 
-    if sell:
+        st.warning("クラブ名を入力してください")
 
-        profit=sell-price
+    else:
 
-        rate=profit/price*100
-
-        return sell,profit,rate
-
-    return None,None,None
-
-
-club_list=[
-("TaylorMade Driver Ventus",22000),
-("Callaway FW Tour AD",18000),
-("PING Hybrid Speeder",15000),
-("Titleist Driver Tensei",20000)
-]
-
-
-if st.button("AIスキャン開始"):
-
-    for name,price in club_list:
-
-        sell,profit,rate=check_club(name,price)
+        sell=mercari_price(club_name)
 
         if sell:
 
-            if rate>10:
+            profit=sell-buy_price
 
-                st.success(
-f"""
-{name}
+            rate=profit/buy_price*100
 
-仕入れ価格 ¥{price}
+            st.success(f"メルカリ平均価格: ¥{sell}")
 
-メルカリ相場 ¥{sell}
+            st.success(f"利益: ¥{profit}")
 
-利益 ¥{profit}
+            st.success(f"利益率: {round(rate,1)} %")
 
-利益率 {round(rate,1)}%
-"""
-)
+        else:
+
+            st.error("相場取得できませんでした")
