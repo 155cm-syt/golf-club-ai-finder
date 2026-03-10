@@ -2,12 +2,8 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import re
-import time
 
-st.set_page_config(page_title="Golf Club Pro Profit AI", layout="wide")
-
-st.title("⛳ Golf Club Pro Profit AI")
-st.write("中古ショップから利益クラブを自動検出")
+st.title("⛳ Golf Club Profit Finder")
 
 shaft_keywords = [
 "VENTUS","Ventus",
@@ -17,18 +13,14 @@ shaft_keywords = [
 "TENSEI"
 ]
 
-shops = {
-"GDO Used":"https://shop.golfdigest.co.jp/used/",
-"Golf Partner":"https://www.golfpartner.co.jp/"
-}
-
-def get_mercari_price(keyword):
+def mercari_price(keyword):
 
     url=f"https://jp.mercari.com/search?keyword={keyword}"
 
     try:
 
-        r=requests.get(url,timeout=10)
+        r=requests.get(url)
+
         soup=BeautifulSoup(r.text,"html.parser")
 
         prices=[]
@@ -39,123 +31,69 @@ def get_mercari_price(keyword):
 
             if "¥" in text:
 
-                p=re.sub("[^0-9]","",text)
+                num=re.sub("[^0-9]","",text)
 
-                if p:
+                if num:
 
-                    price=int(p)
+                    p=int(num)
 
-                    if 5000<price<150000:
+                    if 5000<p<150000:
 
-                        prices.append(price)
+                        prices.append(p)
 
-        if len(prices)>5:
+        if len(prices)>3:
 
-            avg=sum(prices[:10])/10
-
-            return int(avg)
+            return int(sum(prices[:5])/5)
 
     except:
-
         pass
 
     return None
 
 
-def scan_shop(shop,url):
+def check_club(name,price):
 
-    items=[]
+    sell=mercari_price(name)
 
-    try:
+    if sell:
 
-        r=requests.get(url,timeout=10)
+        profit=sell-price
 
-        soup=BeautifulSoup(r.text,"html.parser")
+        rate=profit/price*100
 
-        links=soup.find_all("a")
+        return sell,profit,rate
 
-        for link in links:
-
-            name=link.get_text()
-
-            for shaft in shaft_keywords:
-
-                if shaft in name:
-
-                    buy=20000
-
-                    sell=get_mercari_price(name)
-
-                    if sell:
-
-                        profit=sell-buy
-
-                        rate=profit/buy*100
-
-                        if rate>10:
-
-                            items.append({
-                                "shop":shop,
-                                "name":name.strip(),
-                                "buy":buy,
-                                "sell":sell,
-                                "profit":profit,
-                                "rate":round(rate,1)
-                            })
-
-    except:
-
-        pass
-
-    return items
+    return None,None,None
 
 
-min_profit = st.slider("最低利益率 %",5,50,10)
+club_list=[
+("TaylorMade Driver Ventus",22000),
+("Callaway FW Tour AD",18000),
+("PING Hybrid Speeder",15000),
+("Titleist Driver Tensei",20000)
+]
+
 
 if st.button("AIスキャン開始"):
 
-    all_items=[]
+    for name,price in club_list:
 
-    progress=st.progress(0)
+        sell,profit,rate=check_club(name,price)
 
-    i=0
+        if sell:
 
-    for shop,url in shops.items():
-
-        data=scan_shop(shop,url)
-
-        all_items+=data
-
-        i+=1
-
-        progress.progress(i/len(shops))
-
-        time.sleep(1)
-
-    if len(all_items)==0:
-
-        st.warning("利益クラブなし")
-
-    else:
-
-        all_items=sorted(all_items,key=lambda x:x["rate"],reverse=True)
-
-        for item in all_items:
-
-            if item["rate"]>=min_profit:
+            if rate>10:
 
                 st.success(
 f"""
-{item['name']}
+{name}
 
-ショップ: {item['shop']}
+仕入れ価格 ¥{price}
 
-仕入れ想定: ¥{item['buy']}
+メルカリ相場 ¥{sell}
 
-メルカリ相場: ¥{item['sell']}
+利益 ¥{profit}
 
-利益: ¥{item['profit']}
-
-利益率: {item['rate']}%
+利益率 {round(rate,1)}%
 """
 )
